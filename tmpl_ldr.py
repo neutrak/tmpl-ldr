@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 #this is a simple template loader library
 #it is primarily intended for html templates but can in theory be used for anything
 #as long as the import syntax doesn't directly conflict with the file format syntax of the templates
@@ -23,10 +25,6 @@
 
 #external dependencies
 import re
-
-#internal dependencies
-import lib.log_utils as log_utils
-import lib.file_utils as file_utils
 
 #global constants
 IMPORT_FORMAT=re.compile(r'\{\{\$([^\{\}]+)\}\}')
@@ -99,14 +97,9 @@ def apply_indent_to(text:str,indent:str) -> str:
 #	no side-effects persist after return (reads the necessary template files during execution)
 def load_tmpl(tmpl_file:str, **kwargs) -> str:
 	#load the file content itself into RAM
-	content=file_utils.read_file(
-		filename=tmpl_file,
-	)
-	
-	log_utils.log_print(
-		log_lvl=log_utils.OUT_LVL_DBG,
-		text='[dbg] tmpl_ldr::load_tmpl loading template file '+tmpl_file,
-	)
+	fp=open(tmpl_file,'r')
+	content=fp.read()
+	fp.close()
 	
 	#find the first import via regex
 	#NOTE: this doesn't find all imports right away
@@ -161,4 +154,32 @@ def load_tmpl(tmpl_file:str, **kwargs) -> str:
 	#so return it
 	#and exit the temple
 	return content
+
+if(__name__=='__main__'):
+	print('Running internal test (example template)...')
+	
+	#try to load the example
+	output=load_tmpl(
+		tmpl_file='views/example.tmpl.html',
+		page_title='Example Page Title',
+		page_content='This is some example page content.',
+	)
+
+	#this output could be sent to network or output to the console or whatever works for you
+	
+	#verify that it loads as expected
+	assert(output=='''<html>
+<head>
+        <title>Example Page Title</title>
+</head>
+<body>
+<h1>Example Page Title</h1>
+<hr />
+<p>
+        This is some example page content.
+</p>
+</body>
+</html>
+''')
+	print('Internal test successful; tmpl_ldr is working as expected.')
 

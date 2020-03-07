@@ -33,7 +33,7 @@ And here is the `views/header.tmpl.html` that it includes:
 ```html
 <html>
 <head>
-	<title>{{title}}</title>
+	<title>{{page_title}}</title>
 </head>
 <body>
 ```
