@@ -87,6 +87,9 @@ def apply_indent_to(text:str,indent:str) -> str:
 #load a template file
 #args:
 #	tmpl_file: the relative path of the template file to load
+#	skip_undefined: whether to skip substitutions for undefined varaibles or not (default False)
+#		if False, undefined variables will raise a KeyError
+#		if True, undefined variables will be passed through as their literal values
 #	**kwargs: the variable substitutions to make, as name->value pairs
 #return:
 #	returns a string which contains the template contents with any necessary substitutions
@@ -95,7 +98,7 @@ def apply_indent_to(text:str,indent:str) -> str:
 #	if a variable substitution is expected but that variable is not given then a KeyError occurs
 #side-effects:
 #	no side-effects persist after return (reads the necessary template files during execution)
-def load_tmpl(tmpl_file:str, **kwargs) -> str:
+def load_tmpl(tmpl_file:str, skip_undefined=False, **kwargs) -> str:
 	#load the file content itself into RAM
 	fp=open(tmpl_file,'r')
 	content=fp.read()
@@ -117,7 +120,11 @@ def load_tmpl(tmpl_file:str, **kwargs) -> str:
 		
 		#recurse; an import is just another template loading operation
 		#NOTE: kwargs is passed through to do global variable substitution within imports as well
-		imp_content=load_tmpl(imp.group(1),**kwargs)
+		imp_content=load_tmpl(
+			tmpl_file=imp.group(1),
+			skip_undefined=skip_undefined,
+			**kwargs
+		)
 
 		#preserve indentation on the import statement if it was preceeded by whitespace
 		#i.e. if the import statement was indented by two tabs then all the import content should be indented by the same amount
@@ -129,25 +136,34 @@ def load_tmpl(tmpl_file:str, **kwargs) -> str:
 		
 		#find the next import statement, if any exist
 		imp=re.search(IMPORT_FORMAT,content)
-	
-	#now that the imports are handled, handle the variable substitutions
-	var=re.search(VARIABLE_FORMAT,content)
-	
-	#for each variable in the template
-	while(not (var is None)):
-		#NOTE: if a variable substitution is expected in the template but no such variable was given
-		#then this will throw/raise a KeyError exception
-		var_content=kwargs[var.group(1)]
 
-		#preserve indentation on the variable substitution statement if it was preceeded by whitespace
-		#i.e. if the variable statement was indented by two tabs then all the variable content should be indented by the same amount
-		indent=get_indent_for(text=content,start_at=(var.start()-1))
-		var_content=apply_indent_to(text=var_content,indent=indent)
-		
-		content=content[0:var.start()]+var_content+content[var.end():]
-		
-		#find the next variable substitution, if any exist
+	#if we are skipping undefined variables
+	#then make substitutions by looking for the GIVEN arguments in the temple
+	#where arguments are wont to occur
+	#instead of looking for what variables are in the temple first and THEN looking for what was given as arguments
+	if(skip_undefined):
+		for var in kwargs:
+			if(content.find('{{'+var+'}}')>=0):
+				content=content.replace('{{'+var+'}}',kwargs[var])
+	else:
+		#now that the imports are handled, handle the variable substitutions
 		var=re.search(VARIABLE_FORMAT,content)
+		
+		#for each variable in the template
+		while(not (var is None)):
+			#NOTE: if a variable substitution is expected in the template but no such variable was given
+			#then this will throw/raise a KeyError exception
+			var_content=kwargs[var.group(1)]
+
+			#preserve indentation on the variable substitution statement if it was preceeded by whitespace
+			#i.e. if the variable statement was indented by two tabs then all the variable content should be indented by the same amount
+			indent=get_indent_for(text=content,start_at=(var.start()-1))
+			var_content=apply_indent_to(text=var_content,indent=indent)
+			
+			content=content[0:var.start()]+var_content+content[var.end():]
+			
+			#find the next variable substitution, if any exist
+			var=re.search(VARIABLE_FORMAT,content)
 	
 	#now that all imports and substituions have been performed
 	#the generated content is complete
