@@ -101,15 +101,15 @@ def apply_indent_to(text:str,indent:str) -> str:
 def load_tmpl(tmpl_file:str, skip_undefined=False, **kwargs) -> str:
 	#load the file content itself into RAM
 	fp=open(tmpl_file,'r')
-	content=fp.read()
+	tmpl_content=fp.read()
 	fp.close()
 	
-	return load_tmpl_str(content=content, skip_undefined=skip_undefined, **kwargs)
+	return load_tmpl_str(tmpl_content=tmpl_content, skip_undefined=skip_undefined, **kwargs)
 
 #run template substitutions on an already-loaded string
 #as opposed to reading it from a file first
 #args:
-#	content: the template file content as a string
+#	tmpl_content: the template file content as a string
 #	skip_undefined: whether to skip substitutions for undefined varaibles or not (default False)
 #		if False, undefined variables will raise a KeyError
 #		if True, undefined variables will be passed through as their literal values
@@ -120,13 +120,13 @@ def load_tmpl(tmpl_file:str, skip_undefined=False, **kwargs) -> str:
 #	if a variable substitution is expected but that variable is not given then a KeyError occurs
 #side-effects:
 #	no side-effects
-def load_tmpl_str(content:str, skip_undefined=False, **kwargs) -> str:
+def load_tmpl_str(tmpl_content:str, skip_undefined=False, **kwargs) -> str:
 	#find the first import via regex
 	#NOTE: this doesn't find all imports right away
 	#because the content length changes after an import substitution is made
 	#and that means that after one import all subsequent import regex matches would be invalid
 	#since they would have incorrect start and end points
-	imp=re.search(IMPORT_FORMAT,content)
+	imp=re.search(IMPORT_FORMAT,tmpl_content)
 	
 	#for each import in the template
 	#for each imp in the temple (oh no!)
@@ -145,14 +145,14 @@ def load_tmpl_str(content:str, skip_undefined=False, **kwargs) -> str:
 
 		#preserve indentation on the import statement if it was preceeded by whitespace
 		#i.e. if the import statement was indented by two tabs then all the import content should be indented by the same amount
-		indent=get_indent_for(text=content,start_at=(imp.start()-1))
+		indent=get_indent_for(text=tmpl_content,start_at=(imp.start()-1))
 		imp_content=apply_indent_to(text=imp_content,indent=indent)
 		
 		#once the template is loaded put the content where it's expected
-		content=content[0:imp.start()]+imp_content+content[imp.end():]
+		tmpl_content=tmpl_content[0:imp.start()]+imp_content+tmpl_content[imp.end():]
 		
 		#find the next import statement, if any exist
-		imp=re.search(IMPORT_FORMAT,content)
+		imp=re.search(IMPORT_FORMAT,tmpl_content)
 
 	#if we are skipping undefined variables
 	#then make substitutions by looking for the GIVEN arguments in the temple
@@ -160,11 +160,11 @@ def load_tmpl_str(content:str, skip_undefined=False, **kwargs) -> str:
 	#instead of looking for what variables are in the temple first and THEN looking for what was given as arguments
 	if(skip_undefined):
 		for var in kwargs:
-			if(content.find('{{'+var+'}}')>=0):
-				content=content.replace('{{'+var+'}}',kwargs[var])
+			if(tmpl_content.find('{{'+var+'}}')>=0):
+				tmpl_content=tmpl_content.replace('{{'+var+'}}',kwargs[var])
 	else:
 		#now that the imports are handled, handle the variable substitutions
-		var=re.search(VARIABLE_FORMAT,content)
+		var=re.search(VARIABLE_FORMAT,tmpl_content)
 		
 		#for each variable in the template
 		while(not (var is None)):
@@ -173,20 +173,20 @@ def load_tmpl_str(content:str, skip_undefined=False, **kwargs) -> str:
 			var_content=kwargs[var.group(1)]
 
 			#preserve indentation on the variable substitution statement if it was preceeded by whitespace
-			#i.e. if the variable statement was indented by two tabs then all the variable content should be indented by the same amount
-			indent=get_indent_for(text=content,start_at=(var.start()-1))
+			#i.e. if the variable statement was indented by two tabs then all the variable tmpl_content should be indented by the same amount
+			indent=get_indent_for(text=tmpl_content,start_at=(var.start()-1))
 			var_content=apply_indent_to(text=var_content,indent=indent)
 			
-			content=content[0:var.start()]+var_content+content[var.end():]
+			tmpl_content=tmpl_content[0:var.start()]+var_content+tmpl_content[var.end():]
 			
 			#find the next variable substitution, if any exist
-			var=re.search(VARIABLE_FORMAT,content)
+			var=re.search(VARIABLE_FORMAT,tmpl_content)
 	
 	#now that all imports and substituions have been performed
 	#the generated content is complete
 	#so return it
 	#and exit the temple
-	return content
+	return tmpl_content
 
 if(__name__=='__main__'):
 	print('Running internal test (example template)...')
