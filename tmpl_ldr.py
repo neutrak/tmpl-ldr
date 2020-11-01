@@ -104,6 +104,23 @@ def load_tmpl(tmpl_file:str, skip_undefined=False, **kwargs) -> str:
 	content=fp.read()
 	fp.close()
 	
+	return load_tmpl_str(content=content, skip_undefined=skip_undefined, **kwargs)
+
+#run template substitutions on an already-loaded string
+#as opposed to reading it from a file first
+#args:
+#	content: the template file content as a string
+#	skip_undefined: whether to skip substitutions for undefined varaibles or not (default False)
+#		if False, undefined variables will raise a KeyError
+#		if True, undefined variables will be passed through as their literal values
+#	**kwargs: the variable substitutions to make, as name->value pairs
+#return:
+#	returns a string which contains the template contents with any necessary substitutions
+#	if an import is not found an IOError occurs
+#	if a variable substitution is expected but that variable is not given then a KeyError occurs
+#side-effects:
+#	no side-effects
+def load_tmpl_str(content:str, skip_undefined=False, **kwargs) -> str:
 	#find the first import via regex
 	#NOTE: this doesn't find all imports right away
 	#because the content length changes after an import substitution is made
